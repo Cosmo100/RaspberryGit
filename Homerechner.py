@@ -2,9 +2,9 @@
 #Schnittstelle Datenempfang vom VBus
 #https://forum-raspberrypi.de/forum/thread/35528-daten-an-webserver-uebertragen/#
 #Schnittstellen des Raspberry: dmesg | grep  tty
-#Kleine Änderung für Git Hub
-#Noch eine Änderung
-#Noch eine Änderung
+
+
+
 import sys
 import serial
 import os
