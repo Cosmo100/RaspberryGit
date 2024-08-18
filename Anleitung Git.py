@@ -1,7 +1,5 @@
 #Dies ist kein Phyton-Programm, sondern eine Anleitung, wie Git-hub benutzt wird
 
-
-
 Dokumentation unter https://docs.github.com/de
 
 Beispiel am Raspberry:
@@ -25,9 +23,7 @@ Beispiel am Raspberry:
      git push
      Meldung: Enter passphrase for key '/root/.ssh/id_ed25519':
      Eingabe Passwort: tester10
-     
-    
-    
+       
 
 Die wichtigsten Befehle:
 
