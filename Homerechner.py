@@ -21,6 +21,7 @@ import RPi.GPIO as GPIO
 import subprocess as sp
 import asyncio
 #Das habe ich geändert
+#noch was geändert
 
 #import tkinter as tk
 
