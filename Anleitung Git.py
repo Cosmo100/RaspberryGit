@@ -58,3 +58,29 @@ Befehl: git branch -M main
 //Ab hier funktioniert nicht
 Befehl: git remote add origin git@github.com:Cosmo100/ArduToRasp.git
 Befehl: git push -u origin main
+
+'###############################################'
+Hole Datei wieder von Remote nach Local:
+Beispiel Raspberry:
+Öffne mit Power Shell Admin den Zufriff auf Raspberry:
+    ssh root@heisopi
+    password: tester10
+    
+    wir starten im Pfad /root
+    wechsele in Pfad "Schreibtisch":
+    cd Schreibtisch
+
+   Erfrage Status mit: git status
+ Befehl: git pull  # holt die Dateien von Remote nach local'  
+ Meldung: Enter passphrase for key '/root/.ssh/id_ed25519':   
+ Passwort: tester10
+ 
+ Hole Datei wieder von Local nach Remote: (Windows)
+  Starte Git bash
+  wechsele nach verzeichnis: ~/raspberry/Raspberrygit   
+ frage nach: git status
+ Befehl:  git add 'Anleitung Git.py' oder git add *.py
+  Befehl: git commit -m "Erweiterung Anleitung"
+     git push
+     Meldung: Enter passphrase for key '/root/.ssh/id_ed25519':
+     Eingabe Passwort: tester10
