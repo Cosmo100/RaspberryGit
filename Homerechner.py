@@ -20,7 +20,7 @@ import RPi.GPIO as GPIO
 #Pfad: /usr/local/lib/python3.5/dist-packages/xknx-0.8.5-py3.5.egg/xknx/knx/telegram.py
 import subprocess as sp
 import asyncio
-
+#Das habe ich geändert
 
 #import tkinter as tk
 
