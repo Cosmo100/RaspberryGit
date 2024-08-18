@@ -30,3 +30,31 @@ Die wichtigsten Befehle:
 https://www.devguide.at/git/wichtigsten-befehle-fuer-ein-lokales-repository/
 
 git Status: Zeigt die geänderten Dateien
+
+
+Wichtig:
+Unterscheide zwischen den Protokollen:
+
+for https protocol (Windows)
+git remote set-url origin https://github.com/Cosmo100/repository.git
+
+for ssh protocol (Raspberry)
+git remote set-url origin git@github.com:Cosmo100/repository.git
+
+
+'#####################################################################################'
+mit Power Shell in Windows: Start in diesem Pfad : C:\Windows\system32> 
+ins Hauptverzeichnis:cd.. nochmal cd ..
+
+Beispiel an Arduino:
+Wechsel in das gewünschte Git-Verzeichnis: C:\Users\Juerg\Arduino\Eigene\ArduToRasp
+
+Befehl: git init        'Git Repsitory im localen Verzeinis wird angelegt'
+Befehl: git add *.ino   'Dateien, die das Repository enthalten soll, werden hinzugefügt'
+
+Befehl: git commit -m "first commit"
+Befehl: git branch -M main
+
+//Ab hier funktioniert nicht
+Befehl: git remote add origin git@github.com:Cosmo100/ArduToRasp.git
+Befehl: git push -u origin main
