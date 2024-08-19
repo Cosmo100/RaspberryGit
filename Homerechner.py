@@ -59,6 +59,8 @@ ErsteGasmessung = True
 ip   = "192.168.178.34"  #Hauprechner zur UDP
 ip1   = "192.168.178.40"  #zum ESP32 Gas
 ESPStrom_IP = "192.168.178.60"
+IPWohnzimmer ="192.168.178.52"
+    
 port = 54346
 port1 = 54321
 
@@ -725,7 +727,61 @@ def InternetErreichbar():
                 print("Status geändert: Internet nicht erreichbar!")
             return False  
             #HandyImWLan = True
- 
+
+################################################################
+def LichtWohnzimmer():
+    global Byt
+    global IPWohnzimmer
+    
+    #Einschalten des Wohnzimmerlichtes ab einer gewissen Lichtstärke
+    LichtEin = 200
+    EinZeit = 16 * 60 + 5  #Licht frühestens ab 16:05 einschalten
+    MaxAus  = 22 * 60 + 5  #nur bis 22:05 kontrollieren
+   
+    Licht = Byt[217]*256 + Byt[216]   #Lichtstaerke in Lux (Norden)
+    AktZeit = Byt[31]*60+Byt[32]      #aktuelle Zeit
+    Strom = (int(Byt[273])*256*256 + int(Byt[272])*256 + int(Byt[271]))/100
+    
+    #print ("Licht=",Licht)
+    #print (StatuShellyWohnzimmer())
+    #print (Byt[271],Byt[272],Byt[273])
+    #print (Strom)
+   
+    if AktZeit >= EinZeit and AktZeit < MaxAus and Licht < LichtEin and Strom > 90:
+            StatusLicht=StatuShellyWohnzimmer()
+            if StatusLicht == "aus":
+                print ("Licht wird eingeschaltet")
+                # URL zum Einschalten des Relais (Relay 0 ist der erste Schalter)
+                url = "http://"+IPWohnzimmer+"/relay/0?turn=on"
+                response = requests.get(url)    #Licht einschalten
+    
+    
+################################################################    
+def StatuShellyWohnzimmer():
+    global IPWohnzimmer
+    
+    # URL zur Abfrage des Relais-Status (relay 0 ist der erste Schalter)
+    url = "http://"+IPWohnzimmer+"/relay/0"
+    
+    try:
+    # Senden der HTTP GET-Anfrage an das Shelly-Gerät
+        response = requests.get(url)    
+        if response.status_code == 200:
+            # JSON-Daten der Antwort extrahieren
+            data = response.json()
+            
+            # Abfragen, ob der Shelly eingeschaltet ist
+            if data.get('ison'):     
+                return "ein"
+            else:
+                return "aus"
+        else:
+            print("Fehler: Ungültiger Status-Code {response.status_code}")
+            
+    except requests.exceptions.RequestException as e:
+        print("Ein Fehler ist aufgetreten:" + e)
+        return "Fehler"
+
 ################################################################
 def Handy_im_WLan(IP):
         #Funktion stellt fest, ob sich das Handy (IP 192.168.178.23) im WLan befindet
@@ -894,6 +950,7 @@ try:
             RaspZeitHolen()
             LeseDatenVomSolarserver()
             DatenvomESPStrom()
+            LichtWohnzimmer()
             #print(Byt[238:250])
             DatenzuHeisopo()
             DatenzumPC()
