@@ -734,7 +734,7 @@ def LichtWohnzimmer():
     global IPWohnzimmer
     
     #Einschalten des Wohnzimmerlichtes ab einer gewissen Lichtstärke
-    LichtEin = 200
+    LichtEin = 250
     EinZeit = 16 * 60 + 5  #Licht frühestens ab 16:05 einschalten
     MaxAus  = 22 * 60 + 5  #nur bis 22:05 kontrollieren
    
