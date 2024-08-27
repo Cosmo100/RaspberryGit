@@ -734,7 +734,13 @@ def LichtWohnzimmer():
     global IPWohnzimmer
     
     #Einschalten des Wohnzimmerlichtes ab einer gewissen Lichtstärke
-    LichtEin = 250
+    
+    #print ("Licht",LichtEin, Byt[171])
+    
+    if Byt[171] == 0 : return   #Lichtsteuerung ausgeschaltet
+    
+    LichtEin = Byt[170] * 10   #Sollwert, der vom Arduino kommt
+    
     EinZeit = 16 * 60 + 5  #Licht frühestens ab 16:05 einschalten
     MaxAus  = 22 * 60 + 5  #nur bis 22:05 kontrollieren
    
