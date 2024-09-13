@@ -20,8 +20,7 @@ import RPi.GPIO as GPIO
 #Pfad: /usr/local/lib/python3.5/dist-packages/xknx-0.8.5-py3.5.egg/xknx/knx/telegram.py
 import subprocess as sp
 import asyncio
-#Das habe ich geändert
-#noch was geändert
+
 
 #import tkinter as tk
 
@@ -175,6 +174,7 @@ def FlieskommaInInt(BytNr):
 ##            print(BytNr, HB,LB,Byt[BytNr],Byt[BytNr+1])
 ##            print (Ex,MH,Mant,Erg)
 
+  
 ##############################################################################    
 def LeseWertAusZeile(Datei):
     Zeile = Datei.readline()
@@ -224,9 +224,9 @@ def Gasdaten():
 
                                    
 ###################################################################
+
 async def LeseAdresse():
     global Byt
-   
    
    #Connect and read value from KNX bus.
     xknx = XKNX()
@@ -371,6 +371,36 @@ def ZaehlerstaendeZuHeisopo(ZST):
                 
 
 
+################# Unterprogramme ################################     
+#################################################################
+def PVWerteSelektieren(PVZeile,BS):
+            #Macht aus der Datenzeile des Wechselrichters einzelne Werte
+            
+             posStart = PVZeile.find("[")+1
+             posEnde = PVZeile.find("]")
+
+             PVText= PVZeile[posStart:posEnde]
+             PVText = PVText.replace("'","")
+             print ("PV-Daten=" + PVText)
+             PVText = PVText.split(", ")
+             
+             #Aktuell erzeugte Leistung    
+             Wert = int(PVText[0])
+             Byt[BS] = (Wert) & 0xff
+             Byt[BS+1] = (Wert>>8) & 0xff
+             
+             #An diesem Tag erzeute Leistung
+             Wert1 = int(float(PVText[1]) *1000)
+             Byt[BS+2] = (Wert1) & 0xff
+             Byt[BS+3] = (Wert1>>8) & 0xff
+             
+             #bisher erzeugte Gesamtleistung
+             Wert2 = int(float(PVText[2])*100)
+             Byt[BS+4] = (Wert2) & 0xff
+             Byt[BS+5] = (Wert2>>8) & 0xff
+
+             #print (Wert,Wert1,Wert2)   
+             
 ################# Unterprogramme ################################        
 def LeseDatenVomSolarserver():
         #Daten werden aus Textdatei von Ramdisk gelesen
@@ -378,67 +408,50 @@ def LeseDatenVomSolarserver():
         global GesEnergie
         global AktEnergie 
         global HeutEnergie
+        Bytstart =[122,286,292]    #Adressen der Byts zum Ablegen der Daten
         KennNr = 0
-
-        try: 
+        Zeile=3*[0]
+        I=0 
+        
+        try:       
              Datei= open("/mnt/ramdisk/Aktsol.sol","r")
-             Zeile = LeseWertAusZeile(Datei)
-             #print ("PV-Daten=" + Zeile)
-           
-             Datei.close()
-            #Daten Selektieren
-             posStart = Zeile.find("[")+1
-             posEnde = Zeile.find("]")
-
-             PVText= Zeile[posStart:posEnde]
-             PVText = PVText.replace("'","")
-             #print ("PV-Daten=" + PVText)
-             PVText = PVText.split(", ")
-                 
-             Wert = int(PVText[0])
-             Byt[122] = (Wert) & 0xff
-             Byt[123] = (Wert>>8) & 0xff
-             
-             Wert1 = int(float(PVText[1]) *1000)
-             Byt[124] = (Wert1) & 0xff
-             Byt[125] = (Wert1>>8) & 0xff
-             
-             Wert2 = int(float(PVText[2])*10)
-             Byt[126] = (Wert2) & 0xff
-             Byt[127] = (Wert2>>8) & 0xff
-             
+             for line in Datei: 
+                Zeile[I]=line.rstrip()
+                PVWerteSelektieren(Zeile[I],Bytstart[I])
+                I=I+1
+ 
              #print("AlteEnergie: " + str(AktEnergie), " - NeueEnergie = " + str(Wert))
              #print (Byt[126:128])
              #Energiewerte nachts zurücksetzten auf Null
-             if Wert1 < HeutEnergie:
-                  GesEnergie == 0
-                  AktEnergie = 0
-                  HeutEnergie = 0
-         
+             #if Wert1 < HeutEnergie:
+              #    GesEnergie == 0
+              #    AktEnergie = 0
+              #    HeutEnergie = 0
+                      
+             #if Wert > AktEnergie:
+               #  KennNr=1
+               # AktEnergie = Wert
              
-             if Wert > AktEnergie:
-                 KennNr=1
-                 AktEnergie = Wert
+             #elif Wert1 > HeutEnergie:
+                 #KennNr=2
+                 #HeutEnergie = Wert1
              
-             elif Wert1 > HeutEnergie:
-                 KennNr=2
-                 HeutEnergie = Wert1
+             #elif Wert2 > GesEnergie:
+                 #KennNr=3
+                 #GesEnergie = Wert2 
              
-             elif Wert2 > GesEnergie:
-                 KennNr=3
-                 GesEnergie = Wert2 
-             
-             if KennNr > 0 :
-                    Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    outstr=(str(KennNr) + "," + Datum + "," + str(AktEnergie) + "," +  str(HeutEnergie) + "," + str(GesEnergie))
-                    PVDatenZuHeisopo(outstr)
+             #if KennNr > 0 :
+                    #Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    #outstr=(str(KennNr) + "," + Datum + "," + str(AktEnergie) + "," +  str(HeutEnergie) + "," + str(GesEnergie))
+                    #PVDatenZuHeisopo(outstr)
                     #print (outstr)
              #else:
                     #print("Energie nicht groesser") 
                  
         except:
             
-             print ("Fehler: Datei PV.sol ist nicht vorhanden")
+             print ("Fehler: Datei LesePV.sol ist nicht vorhanden oder Daten nicht vorhanden",Zeile)
+
 
                
 ################# Unterprogramme ################################
@@ -626,7 +639,7 @@ def DatenvomESPStrom():
      
             Byts = ZS.split(",")  #Inhalt der Datei als Bytearray, Zeit wird abgeschnitten
             Byt[331:]= Byts[:12]
-                    #Byt[238:250]= Byts[12:24]  #Strommessung über Nebenzähler Heizung, Waschen, Buero, Pool
+            #Byt[238:250]= Byts[12:24]  #Strommessung über Nebenzähler Heizung, Waschen, Buero, Pool
                     
             ZST= "00" + "-" + HauptZaehlerstandBerechnen(Byts,0) +"\n"
             ZST= ZST + "01" + "-" + HauptZaehlerstandBerechnen(Byts,4) +"\n"
@@ -735,7 +748,7 @@ def LichtWohnzimmer():
     
     #Einschalten des Wohnzimmerlichtes ab einer gewissen Lichtstärke
     
-    #print ("Licht",LichtEin, Byt[171])
+    #print ("Licht ein bei:", Byt[170]*10)
     
     if Byt[171] == 0 : return   #Lichtsteuerung ausgeschaltet
     
