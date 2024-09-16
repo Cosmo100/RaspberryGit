@@ -92,7 +92,7 @@ USBArduino='/dev/tty'+ Ser[2]
 
 Byt=350*[0]         #Daten, die zu heisopo und über UDP zum PC gesendet werden
 Rohbyts = 190*[0]   #array mit 180 leeren Elementen
-FromArd = 330*[0] #Daten, die vom Arduino kommen
+FromArd = 330*[0]   #Daten, die vom Arduino kommen
 Serverantwort =""
 Serveranfrage = False   #wird auf true gesetzt, wenn eine Antwort von Heisopo eingeht
 StromdateiGleich = 0
@@ -291,7 +291,7 @@ def DatenzumPC():  #über UDP
     outstr=', '.join(str(x) for x in Byt)
     #print ("Zum PC",outstr)
     PCDaten = str(outstr)
-    #print (Byt[244:247])
+   
     if Serveranfrage:   #Wenn Antwort von Heisopo da-> anhängen an PC Daten
         PCDaten = PCDaten + Serverantwort
         Serveranfrage = False
@@ -321,6 +321,7 @@ def DatenzuHeisopo():
         print (r.status_code)
         Serverantwort="Inet\n"+ r.text
         print (Serverantwort)
+       
         DatenInTextdatei(outstr)
     except:
         Serverantwort="Inet\n Keine Internetverbindung !"
@@ -381,7 +382,7 @@ def PVWerteSelektieren(PVZeile,BS):
 
              PVText= PVZeile[posStart:posEnde]
              PVText = PVText.replace("'","")
-             print ("PV-Daten=" + PVText)
+             #print ("PV-Daten=" + PVText)
              PVText = PVText.split(", ")
              
              #Aktuell erzeugte Leistung    
@@ -395,7 +396,7 @@ def PVWerteSelektieren(PVZeile,BS):
              Byt[BS+3] = (Wert1>>8) & 0xff
              
              #bisher erzeugte Gesamtleistung
-             Wert2 = int(float(PVText[2])*100)
+             Wert2 = int(float(PVText[2])*10)
              Byt[BS+4] = (Wert2) & 0xff
              Byt[BS+5] = (Wert2>>8) & 0xff
 
@@ -408,9 +409,9 @@ def LeseDatenVomSolarserver():
         global GesEnergie
         global AktEnergie 
         global HeutEnergie
-        Bytstart =[122,286,292]    #Adressen der Byts zum Ablegen der Daten
+        Bytstart =[122,130,286,292]    #Adressen der Byts zum Ablegen der Daten
         KennNr = 0
-        Zeile=3*[0]
+        Zeile=4*[0]
         I=0 
         
         try:       
@@ -452,7 +453,8 @@ def LeseDatenVomSolarserver():
             
              print ("Fehler: Datei LesePV.sol ist nicht vorhanden oder Daten nicht vorhanden",Zeile)
 
-
+        #print (Byt[130:135])
+        #print (Byt[286:297])
                
 ################# Unterprogramme ################################
 def DatenInTextdatei(Datenstrom):
@@ -497,24 +499,32 @@ def HandyLogzuHeisopo(GeraeteIP):
         
     except:
         print ("Fehler: keine Internetverbindung (Handy)")
-#########################################################################
+
+  
+#########################################################################    
 def DatenzumArduino():
         global Byt
-        Anz = 160
-        #nur 160 Byt zum Arduino
+        
+        Anz = 200
+        ToArd = (Anz+1)*[0] #200 Byt für Arduino vorbereiten
+        ToArd[:161] = Byt[:161]   #160 Byt holen zum neuen Array   
+        
+        #Weitere Byts: 
+        ToArd[160:162]  = Byt[286:288]  #Akt erzeugter Strom von PV2,Modul1
+        ToArd[162:164]  = Byt[292:294]  #Akt erzeugter Strom von PV2,Modul2
         
         Pruef = 0
         for i in range(0,Anz):
-            #print (i,"-",Byt[i])
-            if Byt[i] < 0 or Byt[i] > 255:#Testen auf falsche Werte
-               Byt[i] = 0 
-            Pruef += Byt[i]
+            #print (i,"-",ToArd[i])
+            if ToArd[i] < 0 or ToArd[i] > 255:#Testen auf falsche Werte
+               ToArd[i] = 0 
+            Pruef += ToArd[i]
         
         #try:
         LowByte = Pruef % 256
-        Byt[Anz]= LowByte
-        Arduino.write(Byt[:161])
-        Byt[159]= 0; #WLanbyt zurücksetzen
+        ToArd[Anz]= LowByte
+        Arduino.write(ToArd[:Anz+1])
+        #ToArd[159]= 0; #WLanbyt zurücksetzen
         #except:
         #print (Pruef,"-", LowByte)
         #print (Byt[:Anz+1])
@@ -970,12 +980,12 @@ try:
             LeseDatenVomSolarserver()
             DatenvomESPStrom()
             LichtWohnzimmer()
-            #print(Byt[238:250])
+            #print (Byt[130:132],Byt[130]+256*Byt[131])
             DatenzuHeisopo()
             DatenzumPC()
             #DatenzumESP32()
             if SerOK[2]: DatenzumArduino() #nur wenn Verbindung vorhanden ist
-            #print (Byt[45:48])     #Uhrzeit des Raspberr
+            #print (Byt[130:132])     #Uhrzeit des Raspberr
        # root.mainloop()    
             
 ##        

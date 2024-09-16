@@ -2,8 +2,8 @@
 #in Ramdisk in Datei 'PV.sol'
 #Es werden 3 Zeilen geschrieben:
 #Zeile 1: Dateidatum und Daten der PV-Anlage 1
-#Zeile 2: Daten der PV-Anlage 2, Modul1 (östlich)
-#Zeile 3: Daten der PV-Anlage 2, Modul2 (westlich)
+#Zeile 2: Daten der PV-Anlage 2, Modul1 (westlich)
+#Zeile 3: Daten der PV-Anlage 2, Modul2 (östlich)
 #diese Datei wird von Homerechner.py gelesen
 #und dann an Heisopo übertragen
 
@@ -50,7 +50,7 @@ try:
     #print (Auswahl)
 
     I=0
-    Wert=5*[0]
+    Wert=3*[0]
     while len(Auswahl) > 40:
          startIndex = Auswahl.find(chr(34))
          endIndex = Auswahl.find(chr(34), startIndex + 1)
@@ -59,7 +59,7 @@ try:
          Auswahl = Auswahl[endIndex+5:]
          I+=1
      
-    print (Wert[:3])
+    print (Wert)
     #print("Aktuelle Leistung:",Wert[0],"Watt")
     #print("heute produzierte Energie:",float(Wert[1])*1000,"Wh")
     #print("insgesamt produzierte Leistung:",Wert[2],"kWh")
@@ -94,6 +94,7 @@ try:
 
         Modul1=3*[0]
         Modul2=3*[0]
+        Summ=3*[0]
         Modul1[0]=str(data['p1'])
         Modul2[0]=str(data['p2'])
         Modul1[1]=str(data['e1'])
@@ -101,9 +102,14 @@ try:
         Modul1[2]=str(data['te1'])
         Modul2[2]=str(data['te2'])
         
+        Summ[0]=str(data['p1']+data['p2'])
+        Summ[1]=str(data['e1']+data['e2'])
+        Summ[2]=str(data['te1']+data['te2'])
+    
         print (Modul1)
         print (Modul2)
-      
+        print (Summ)
+   
     else:
         print("Fehler: HTTP", response.status_code, "-", response.reason)
 
@@ -113,4 +119,4 @@ except requests.exceptions.RequestException as e:
 
 #Alle Daten in  Datei schreiben
 with open("/mnt/ramdisk/Aktsol.sol", "w") as file:
-        file.write(date_string + ": " + str(Wert[:3]) + "\n" + str(Modul1)+ "\n" + str(Modul2))
+        file.write(date_string + ": " + str(Wert) + "\n" + str(Summ)+ "\n" + str(Modul1)+ "\n" + str(Modul2))
