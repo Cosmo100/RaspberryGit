@@ -112,11 +112,20 @@ try:
    
     else:
         print("Fehler: HTTP", response.status_code, "-", response.reason)
+        Datei = open("/mnt/ramdisk/FehlerInLesePV.txt",'a')
+        print(Datei.write("Fehler: HTTP", response.status_code, "-", response.reason+"\n"))
+        Datei.close()
 
 except requests.exceptions.RequestException as e:
     print("Ein Fehler ist aufgetreten:", e)
-    
 
-#Alle Daten in  Datei schreiben
-with open("/mnt/ramdisk/Aktsol.sol", "w") as file:
-        file.write(date_string + ": " + str(Wert) + "\n" + str(Summ)+ "\n" + str(Modul1)+ "\n" + str(Modul2))
+Len1= len(Modul1[0])+len(Modul1[1])+len(Modul1[2])
+Len2= len(Modul2[0])+len(Modul2[1])+len(Modul2[2])
+
+#print ("Länge1: " + str(Len1) + " - Länge2: " + str(Len2))
+    
+#Alle Daten in  Datei schreiben    
+if Len1 > 0 and Len2>0:
+        with open("/mnt/ramdisk/Aktsol.sol", "w") as file:
+                file.write(date_string + ": " + str(Wert) + "\n" + str(Summ)+ "\n" + str(Modul1)+ "\n" + str(Modul2))
+        #print ("Datei erstellt")

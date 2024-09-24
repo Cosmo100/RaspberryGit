@@ -66,9 +66,9 @@ port1 = 54321
 #Dachrechner_PORT = 7777
 
 LEDPin=21
-GesEnergie = 0
-AktEnergie  = 0
-HeutEnergie  = 0
+GesEnergie = 4*[0]
+HeutEnergie  = 4*[0]
+AktEnergie  = 4*[0]
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -256,7 +256,7 @@ async def LeseAdresse():
     for n in BytListe: 
         FlieskommaInInt(n)
   
-    
+     
    
  ################# Unterprogramme ################################
 def LED_schalten():
@@ -286,8 +286,7 @@ def DatenzumPC():  #über UDP
    
     global Serverantwort
     global Serveranfrage
-  
-  
+    
     outstr=', '.join(str(x) for x in Byt)
     #print ("Zum PC",outstr)
     PCDaten = str(outstr)
@@ -297,7 +296,7 @@ def DatenzumPC():  #über UDP
         Serveranfrage = False
         
     sock.sendto(PCDaten.encode('utf-8'), (ip, port))
-    print ("Sende zum PC",len(Byt)," Bytes")
+    print ("Sende " + str(len(Byt)) + " Bytes um PC")
   
 
 ################# Unterprogramme ################################
@@ -321,7 +320,7 @@ def DatenzuHeisopo():
         print (r.status_code)
         Serverantwort="Inet\n"+ r.text
         print (Serverantwort)
-       
+        #print ("Zu Heisopo : "+ str(Byt[286:288])+ str(Byt[292:294]))
         DatenInTextdatei(outstr)
     except:
         Serverantwort="Inet\n Keine Internetverbindung !"
@@ -374,38 +373,52 @@ def ZaehlerstaendeZuHeisopo(ZST):
 
 ################# Unterprogramme ################################     
 #################################################################
-def PVWerteSelektieren(PVZeile,BS):
+def PVWerteSelektieren(I,PVZeile,BS):
+             global GesEnergie
+             global AktEnergie 
+             global HeutEnergie
+        
             #Macht aus der Datenzeile des Wechselrichters einzelne Werte
             
              posStart = PVZeile.find("[")+1
              posEnde = PVZeile.find("]")
 
              PVText= PVZeile[posStart:posEnde]
-             PVText = PVText.replace("'","")
-             #print ("PV-Daten=" + PVText)
-             PVText = PVText.split(", ")
+             #print ("PV-Daten=" + PVText) 
+             #print ("Start:" + str(posStart) + " Ende:" + str(posEnde)+ " Länge=" + str(len(PVText)))
              
-             #Aktuell erzeugte Leistung    
-             Wert = int(PVText[0])
-             Byt[BS] = (Wert) & 0xff
-             Byt[BS+1] = (Wert>>8) & 0xff
-             
-             #An diesem Tag erzeute Leistung
-             Wert1 = int(float(PVText[1]) *1000)
-             Byt[BS+2] = (Wert1) & 0xff
-             Byt[BS+3] = (Wert1>>8) & 0xff
-             
-             #bisher erzeugte Gesamtleistung
-             Wert2 = int(float(PVText[2])*10)
-             Byt[BS+4] = (Wert2) & 0xff
-             Byt[BS+5] = (Wert2>>8) & 0xff
+             if (len(PVText) > 10):
+                 PVText = PVText.replace("'","")
+                 PVText = PVText.split(", ")
+                 #print ("PVText = " + str(PVText))
+        
+                 
+                 #Aktuell erzeugte Leistung    
+                 AktEnergie[I] = int(PVText[0])
+                 Byt[BS] = (AktEnergie[I]) & 0xff
+                 Byt[BS+1] = (AktEnergie[I]>>8) & 0xff
+                 
+                 #An diesem Tag erzeute Leistung
+                 HeutEnergie[I] = int(float(PVText[1]) *1000)
+                 Byt[BS+2] = (HeutEnergie[I]) & 0xff
+                 Byt[BS+3] = (HeutEnergie[I]>>8) & 0xff
+                 
+                 #bisher erzeugte Gesamtleistung (Zählerstand
+                 GesEnergie[I] = int(float(PVText[2])*10)
+                 Byt[BS+4] = (GesEnergie[I]) & 0xff
+                 Byt[BS+5] = (GesEnergie[I]>>8) & 0xff
+             else:
+                
+                Datname = open("/mnt/ramdisk/Fehler.txt",'a')
+                print(Datname.write(PVZeile+"\n"))
+                Datname.close()
 
-             #print (Wert,Wert1,Wert2)   
+             #print (str(I) + " - " + str(AktEnergie[I]) + " - " +  str(HeutEnergie[I])+  "->" + str(Byt[BS:BS+2]) )   
              
 ################# Unterprogramme ################################        
 def LeseDatenVomSolarserver():
         #Daten werden aus Textdatei von Ramdisk gelesen
-        #Textdatei wir alle 4 min von LesePV.py erstellt 
+        #Textdatei wir jede Minute von LesePV.py erstellt 
         global GesEnergie
         global AktEnergie 
         global HeutEnergie
@@ -415,17 +428,18 @@ def LeseDatenVomSolarserver():
         I=0 
         
         try:       
-             Datei= open("/mnt/ramdisk/Aktsol.sol","r")
-             for line in Datei: 
+            Datei= open("/mnt/ramdisk/Aktsol.sol","r")
+            for line in Datei: 
                 Zeile[I]=line.rstrip()
-                PVWerteSelektieren(Zeile[I],Bytstart[I])
+                PVWerteSelektieren(I,Zeile[I],Bytstart[I])
                 I=I+1
- 
+            Datei.close()
+            
              #print("AlteEnergie: " + str(AktEnergie), " - NeueEnergie = " + str(Wert))
-             #print (Byt[126:128])
+            #print (Byt[286:298])
              #Energiewerte nachts zurücksetzten auf Null
              #if Wert1 < HeutEnergie:
-              #    GesEnergie == 0
+              #    GesEnergiePV1 == 0
               #    AktEnergie = 0
               #    HeutEnergie = 0
                       
@@ -437,25 +451,26 @@ def LeseDatenVomSolarserver():
                  #KennNr=2
                  #HeutEnergie = Wert1
              
-             #elif Wert2 > GesEnergie:
+             #elif Wert2 > GesEnergiePV1:
                  #KennNr=3
-                 #GesEnergie = Wert2 
+                 #GesEnergiePV1 = Wert2 
              
              #if KennNr > 0 :
                     #Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    #outstr=(str(KennNr) + "," + Datum + "," + str(AktEnergie) + "," +  str(HeutEnergie) + "," + str(GesEnergie))
+                    #outstr=(str(KennNr) + "," + Datum + "," + str(AktEnergie) + "," +  str(HeutEnergie) + "," + str(GesEnergiePV1))
                     #PVDatenZuHeisopo(outstr)
                     #print (outstr)
              #else:
                     #print("Energie nicht groesser") 
                  
         except:
-            
-             print ("Fehler: Datei LesePV.sol ist nicht vorhanden oder Daten nicht vorhanden",Zeile)
+             print ("Fehler: Datei Aktsol.sol ist nicht vorhanden oder Daten nicht vorhanden",Zeile)
 
         #print (Byt[130:135])
         #print (Byt[286:297])
-               
+        # (GesEnergie)
+            
+                   
 ################# Unterprogramme ################################
 def DatenInTextdatei(Datenstrom):
             #Daten weredn in Texdatei gespeichert und auf Ramdisk abgelegt
@@ -510,8 +525,8 @@ def DatenzumArduino():
         ToArd[:161] = Byt[:161]   #160 Byt holen zum neuen Array   
         
         #Weitere Byts: 
-        ToArd[160:162]  = Byt[286:288]  #Akt erzeugter Strom von PV2,Modul1
-        ToArd[162:164]  = Byt[292:294]  #Akt erzeugter Strom von PV2,Modul2
+        ToArd[162:164]  = Byt[286:288]  #Akt erzeugter Strom von PV2,Modul1
+        ToArd[164:166]  = Byt[292:294]  #Akt erzeugter Strom von PV2,Modul2
         
         Pruef = 0
         for i in range(0,Anz):
@@ -524,6 +539,8 @@ def DatenzumArduino():
         LowByte = Pruef % 256
         ToArd[Anz]= LowByte
         Arduino.write(ToArd[:Anz+1])
+        #print ("Sende : "+ str(ToArd[162:166]))
+        
         #ToArd[159]= 0; #WLanbyt zurücksetzen
         #except:
         #print (Pruef,"-", LowByte)
@@ -559,7 +576,7 @@ def BytsDarstellen(AnzFrames):
                     Byt[Index] = Rohbyts[Startbyt + j]
                     #print(Index," ",FrameNr,Startbyt," ",j,Startbyt + j,Byt[Index] )
                   
-         else: print (FrameNr,"Check nicht OK",Startbyt,check)
+         else: print (FrameNr,"Check Byts DeltaSol nicht OK",Startbyt,check)
                  
     #for i in range(0,10):
    # print (ValuByte)
@@ -614,7 +631,10 @@ def NiveauszuHeisopo():
 
 ################# Unterprogramme ##########################################
 def StromdateiLesen():
-    
+        #Die Daten für diese Datei werden vom ESP32Strom an Heisopi-Server geschickt.
+        #zur Datei '/var/www/html/heisopo/RaspServer/EmpfangStrom.php
+        #diese erzeugt die Datei "/mnt/ramdisk/Stromdaten.heis"
+        
         fileStrom ="/mnt/ramdisk/Stromdaten.heis"
         try:
            Datei = open(fileStrom, "r")
@@ -629,7 +649,7 @@ def StromdateiLesen():
 ################################################################
 def DatenvomESPStrom():
     global Byt
-    global GesEnergie
+    global GesEnergiePV1
     global StromZeit
 
     #Diese Daten werden über UDP vom ESPStrom empfangen
@@ -651,9 +671,13 @@ def DatenvomESPStrom():
             Byt[331:]= Byts[:12]
             #Byt[238:250]= Byts[12:24]  #Strommessung über Nebenzähler Heizung, Waschen, Buero, Pool
                     
-            ZST= "00" + "-" + HauptZaehlerstandBerechnen(Byts,0) +"\n"
-            ZST= ZST + "01" + "-" + HauptZaehlerstandBerechnen(Byts,4) +"\n"
-            ZST= ZST + "02" + "-" + str(GesEnergie/10) +"\n"
+            ZST= "00" + "-" + HauptZaehlerstandBerechnen(Byts,0) +"\n"          #Hauptzählerstand
+            ZST= ZST + "01" + "-" + HauptZaehlerstandBerechnen(Byts,4) +"\n"    #Eingespeist
+            ZST= ZST + "02" + "-" + str(GesEnergie[0]/10) +"\n"                 #Gesamt PV1
+            #ZST= ZST + "02" + "-" + str(1024.3) +"\n"                 #Gesamt PV1
+            ZST= ZST + "03" + "-" + str(GesEnergie[1]/10)+ "\n"                 #Gesamt PV2
+            ZST= ZST + "04" + "-" + str(GesEnergie[2]/10)+ "\n"                 #Gesamt PV2, Modul1
+            ZST= ZST + "05" + "-" + str(GesEnergie[3]/10) + "\n"                #Gesamt PV2, Modul2    
             
             Byt[128]= int(Byts[11]) #beide niederwertige Byts zum Senden an Dachrechner
             Byt[129]= int(Byts[10]) #das ist die aktuelle Leistung des Hauptstromzählers
@@ -691,10 +715,11 @@ def DatenvomESPStrom():
             
         StaendeInTextdatei(ZST)
         
-         #Zaehlerstände alle 5 Minuten zu Heisopo
-        if (time.time()- StromZeit) < 5*60: return  #Zaehlerstände alle 5 Minunten Speichern
+         #Zaehlerstände alle 3 Minuten zu Heisopo
+        if (time.time()- StromZeit) < 3*60: return  #Zaehlerstände alle 5 Minunten Speichern
         StromZeit = time.time()
         ZaehlerstaendeZuHeisopo(Datum + "," + ZST)
+        print ("Sende Zählerstände zu Heisopo")
         #print ("Zaehlerstaende:\n"+ZST)   
             
     except:          
@@ -927,7 +952,7 @@ try:
                   
         readUSB = 2
         #GPIO_schalten(16) 
-###########-Lese SunGo- ##############
+###########-Lese SunGo- Auf dem Dachboden #############
         LED_schalten()
         while readUSB == 2:        
             try:
