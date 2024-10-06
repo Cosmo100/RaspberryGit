@@ -65,6 +65,7 @@ port1 = 54321
 
 #Dachrechner_PORT = 7777
 
+ResetPinESP32=17
 LEDPin=21
 GesEnergie = 4*[0]
 HeutEnergie  = 4*[0]
@@ -73,6 +74,8 @@ AktEnergie  = 4*[0]
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(LEDPin, GPIO.OUT)
+GPIO.setup(ResetPinESP32, GPIO.OUT)
+GPIO.output(ResetPinESP32, GPIO.HIGH) #Setze Reset Pin auf High
 LEDStatus = True
 HandyImWLan = False
 InternetOK = False
@@ -96,6 +99,7 @@ FromArd = 330*[0]   #Daten, die vom Arduino kommen
 Serverantwort =""
 Serveranfrage = False   #wird auf true gesetzt, wenn eine Antwort von Heisopo eingeht
 StromdateiGleich = 0
+GarKell = 0   #Garage/Keller offen? Empfang von ESP Strom Über Ram-Datei Und weitergeleitet an Arduino
 
 
 DZa = 0
@@ -434,34 +438,7 @@ def LeseDatenVomSolarserver():
                 PVWerteSelektieren(I,Zeile[I],Bytstart[I])
                 I=I+1
             Datei.close()
-            
-             #print("AlteEnergie: " + str(AktEnergie), " - NeueEnergie = " + str(Wert))
-            #print (Byt[286:298])
-             #Energiewerte nachts zurücksetzten auf Null
-             #if Wert1 < HeutEnergie:
-              #    GesEnergiePV1 == 0
-              #    AktEnergie = 0
-              #    HeutEnergie = 0
-                      
-             #if Wert > AktEnergie:
-               #  KennNr=1
-               # AktEnergie = Wert
-             
-             #elif Wert1 > HeutEnergie:
-                 #KennNr=2
-                 #HeutEnergie = Wert1
-             
-             #elif Wert2 > GesEnergiePV1:
-                 #KennNr=3
-                 #GesEnergiePV1 = Wert2 
-             
-             #if KennNr > 0 :
-                    #Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    #outstr=(str(KennNr) + "," + Datum + "," + str(AktEnergie) + "," +  str(HeutEnergie) + "," + str(GesEnergiePV1))
-                    #PVDatenZuHeisopo(outstr)
-                    #print (outstr)
-             #else:
-                    #print("Energie nicht groesser") 
+      
                  
         except:
              print ("Fehler: Datei Aktsol.sol ist nicht vorhanden oder Daten nicht vorhanden",Zeile)
@@ -519,6 +496,7 @@ def HandyLogzuHeisopo(GeraeteIP):
 #########################################################################    
 def DatenzumArduino():
         global Byt
+        global GarKell
         
         Anz = 200
         ToArd = (Anz+1)*[0] #200 Byt für Arduino vorbereiten
@@ -527,6 +505,8 @@ def DatenzumArduino():
         #Weitere Byts: 
         ToArd[162:164]  = Byt[286:288]  #Akt erzeugter Strom von PV2,Modul1
         ToArd[164:166]  = Byt[292:294]  #Akt erzeugter Strom von PV2,Modul2
+        ToArd[166] = int(GarKell)  #Garage/Keller offen? 
+        
         
         Pruef = 0
         for i in range(0,Anz):
@@ -629,6 +609,21 @@ def NiveauszuHeisopo():
     except:
         print ("Fehler: keine Internetverbindung")
 
+################# Erstellugszeit lesen  ##########################################
+def PruefeESP32(fileStrom):
+       
+        #Datei-Statistiken abrufen
+        file_stats = os.stat(fileStrom)
+        Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
+        Diff = time.time()-Erstellungszeit
+ 
+        if Diff > 30:   #Wenn Stromdatei älter als 30sec => Reset des ESP32 über GPIO
+            print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
+            GPIO.output(ResetPinESP32, GPIO.LOW)
+            time.sleep(1)
+            GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
+           
+
 ################# Unterprogramme ##########################################
 def StromdateiLesen():
         #Die Daten für diese Datei werden vom ESP32Strom an Heisopi-Server geschickt.
@@ -640,6 +635,7 @@ def StromdateiLesen():
            Datei = open(fileStrom, "r")
            Inhalt = Datei.readline()
            Datei.close()
+           PruefeESP32(fileStrom)
   
         except FileNotFoundError as e:
             print  ("Datei 'Stromdaten.heis' fehlt in Ramdisk")
@@ -651,8 +647,9 @@ def DatenvomESPStrom():
     global Byt
     global GesEnergiePV1
     global StromZeit
+    global GarKell
 
-    #Diese Daten werden über UDP vom ESPStrom empfangen
+    #Diese Daten werden über UDP vom ESPStrom gesendet an Heisopi und als Datei im Ram abgelegt
     Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
   
     try:
@@ -674,7 +671,6 @@ def DatenvomESPStrom():
             ZST= "00" + "-" + HauptZaehlerstandBerechnen(Byts,0) +"\n"          #Hauptzählerstand
             ZST= ZST + "01" + "-" + HauptZaehlerstandBerechnen(Byts,4) +"\n"    #Eingespeist
             ZST= ZST + "02" + "-" + str(GesEnergie[0]/10) +"\n"                 #Gesamt PV1
-            #ZST= ZST + "02" + "-" + str(1024.3) +"\n"                 #Gesamt PV1
             ZST= ZST + "03" + "-" + str(GesEnergie[1]/10)+ "\n"                 #Gesamt PV2
             ZST= ZST + "04" + "-" + str(GesEnergie[2]/10)+ "\n"                 #Gesamt PV2, Modul1
             ZST= ZST + "05" + "-" + str(GesEnergie[3]/10) + "\n"                #Gesamt PV2, Modul2    
@@ -714,6 +710,12 @@ def DatenvomESPStrom():
             Pos=Last
             
         StaendeInTextdatei(ZST)
+        #Keller offen und Garage offen rausfiltern
+        Pos = Inh.find("GarKell",Pos)
+        First = Inh.find("[",Pos)
+        Last = Inh.find("]",First)
+        GarKell= Inh[First+1:Last] 
+        #print ("GarKell=" + GarKell)
         
          #Zaehlerstände alle 3 Minuten zu Heisopo
         if (time.time()- StromZeit) < 3*60: return  #Zaehlerstände alle 5 Minunten Speichern
@@ -723,7 +725,7 @@ def DatenvomESPStrom():
         #print ("Zaehlerstaende:\n"+ZST)   
             
     except:          
-                print("keine Daten vom ESP-Strom")
+                print("keine oder falsche Daten vom ESP-Strom")
                   
 ################################################################
 def ZaehlerstandBerechnen(y):
