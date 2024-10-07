@@ -412,10 +412,10 @@ def PVWerteSelektieren(I,PVZeile,BS):
                  Byt[BS+4] = (GesEnergie[I]) & 0xff
                  Byt[BS+5] = (GesEnergie[I]>>8) & 0xff
              else:
-                
-                Datname = open("/mnt/ramdisk/Fehler.txt",'a')
-                print(Datname.write(PVZeile+"\n"))
-                Datname.close()
+                print("Fehler beim Lesen der Zäehlerstände")
+                #Datname = open("/mnt/ramdisk/Fehler.txt",'a')
+                #print(Datname.write(PVZeile+"\n"))
+                #Datname.close()
 
              #print (str(I) + " - " + str(AktEnergie[I]) + " - " +  str(HeutEnergie[I])+  "->" + str(Byt[BS:BS+2]) )   
              
@@ -620,7 +620,7 @@ def PruefeESP32(fileStrom):
         if Diff > 30:   #Wenn Stromdatei älter als 30sec => Reset des ESP32 über GPIO
             print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
             GPIO.output(ResetPinESP32, GPIO.LOW)
-            time.sleep(1)
+            time.sleep(2)
             GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
            
 
