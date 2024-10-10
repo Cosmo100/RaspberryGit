@@ -615,13 +615,18 @@ def PruefeESP32(fileStrom):
         #Datei-Statistiken abrufen
         file_stats = os.stat(fileStrom)
         Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
-        Diff = time.time()-Erstellungszeit
+        Diff = round(time.time()-Erstellungszeit,2)
  
         if Diff > 30:   #Wenn Stromdatei älter als 30sec => Reset des ESP32 über GPIO
             print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
             GPIO.output(ResetPinESP32, GPIO.LOW)
             time.sleep(2)
             GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
+            Datname = open("/mnt/ramdisk/HardresetESP32.txt",'a')
+            Aktzeit = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            Datname.write(Aktzeit + " - " + str(Diff) + "s\n")
+            Datname.close()
+
            
 
 ################# Unterprogramme ##########################################
