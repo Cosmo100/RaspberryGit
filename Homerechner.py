@@ -426,7 +426,7 @@ def LeseDatenVomSolarserver():
         global GesEnergie
         global AktEnergie 
         global HeutEnergie
-        Bytstart =[122,130,286,292]    #Adressen der Byts zum Ablegen der Daten
+        Bytstart =[122,130,304,310]    #Adressen der Byts zum Ablegen der Daten
         KennNr = 0
         Zeile=4*[0]
         I=0 
@@ -503,8 +503,8 @@ def DatenzumArduino():
         ToArd[:161] = Byt[:161]   #160 Byt holen zum neuen Array   
         
         #Weitere Byts: 
-        ToArd[162:164]  = Byt[286:288]  #Akt erzeugter Strom von PV2,Modul1
-        ToArd[164:166]  = Byt[292:294]  #Akt erzeugter Strom von PV2,Modul2
+        ToArd[162:164]  = Byt[304:306]  #Akt erzeugter Strom von PV2,Modul1
+        ToArd[164:166]  = Byt[310:312]  #Akt erzeugter Strom von PV2,Modul2
         ToArd[166] = int(GarKell)  #Garage/Keller offen? 
         
         
@@ -617,7 +617,7 @@ def PruefeESP32(fileStrom):
         Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
         Diff = round(time.time()-Erstellungszeit,2)
  
-        if Diff > 30:   #Wenn Stromdatei älter als 30sec => Reset des ESP32 über GPIO
+        if Diff > 300:   #Wenn Stromdatei älter als 300sec => Reset des ESP32 über GPIO
             print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
             GPIO.output(ResetPinESP32, GPIO.LOW)
             time.sleep(2)
@@ -735,7 +735,7 @@ def DatenvomESPStrom():
 ################################################################
 def ZaehlerstandBerechnen(y):
             
-            Stand = (int(y[0]) + int(y[1]) * 256 +int(y[2]) * 256 ** 2)/100000         
+            Stand = (int(y[0]) + int(y[1]) * 256 +int(y[2]) * 256 ** 2)/1000         
             Stand= format(round(Stand,3))    
             return Stand
 ################################################################
