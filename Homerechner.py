@@ -27,7 +27,8 @@ import asyncio
 #import sys
 #import SuchePorts
 
-from datetime import datetime
+
+from datetime import datetime, timedelta
 from xknx import XKNX
 
 from xknx.core import ValueReader
@@ -113,7 +114,7 @@ AnzArduino = 0
 readUSB = 1
 AktZeit = time.time()
 StromZeit = time.time()
-
+ResetZeit= datetime.now()
 KNXZeit = time.time()
 
 #Bytposition (null basierend)
@@ -300,7 +301,7 @@ def DatenzumPC():  #über UDP
         Serveranfrage = False
         
     sock.sendto(PCDaten.encode('utf-8'), (ip, port))
-    print ("Sende " + str(len(Byt)) + " Bytes um PC")
+    print ("Sende " + str(len(Byt)) + " Bytes zum PC")
   
 
 ################# Unterprogramme ################################
@@ -608,26 +609,39 @@ def NiveauszuHeisopo():
         
     except:
         print ("Fehler: keine Internetverbindung")
+        
+################# Reset Stromrechner ESP32 ##########################################
+def ResetESP(Diff):
+        global ResetZeit
+        print ("Reset : " + ResetZeit.strftime("%H:%M:%S"))
+        if datetime.now() < ResetZeit: return
+        #nächstr Reset erst 2 Minuten später
+        ResetZeit = datetime.now() + timedelta(minutes=2) # vergangene Zeit seit dem letzten Reset
+        print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
+        GPIO.output(ResetPinESP32, GPIO.LOW)
+        time.sleep(2)
+        GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
+        Datname = open("/mnt/ramdisk/HardresetESP32.txt",'a')
+        Aktzeit = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        Datname.write(Aktzeit + " - " + str(Diff) + "s\n")
+        Datname.close()
 
 ################# Erstellugszeit lesen  ##########################################
-def PruefeESP32(fileStrom):
+def StromdatenOK(fileStrom):
        
-        #Datei-Statistiken abrufen
-        file_stats = os.stat(fileStrom)
-        Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
-        Diff = round(time.time()-Erstellungszeit,2)
- 
-        if Diff > 300:   #Wenn Stromdatei älter als 300sec => Reset des ESP32 über GPIO
-            print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
-            GPIO.output(ResetPinESP32, GPIO.LOW)
-            time.sleep(2)
-            GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
-            Datname = open("/mnt/ramdisk/HardresetESP32.txt",'a')
-            Aktzeit = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            Datname.write(Aktzeit + " - " + str(Diff) + "s\n")
-            Datname.close()
-
-           
+        if os.path.exists(fileStrom):
+            #Datei-Statistiken abrufen
+            file_stats = os.stat(fileStrom)
+            Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
+            Diff = round(time.time()-Erstellungszeit,2)
+            print ("Differenz:"+str(Diff))
+            if Diff > (4*60):  #Älter als 4 Minuten 
+                ResetESP(Diff)  #Wenn Stromdatei älter als 300sec => Reset des ESP32 über GPIO
+                return False
+            return True    
+        else:    
+                ResetESP(0)  #Wenn Stromdatei nicht vorhanden ist => Reset des ESP32 über GPIO
+                return False   
 
 ################# Unterprogramme ##########################################
 def StromdateiLesen():
@@ -636,14 +650,13 @@ def StromdateiLesen():
         #diese erzeugt die Datei "/mnt/ramdisk/Stromdaten.heis"
         
         fileStrom ="/mnt/ramdisk/Stromdaten.heis"
-        try:
-           Datei = open(fileStrom, "r")
-           Inhalt = Datei.readline()
-           Datei.close()
-           PruefeESP32(fileStrom)
-  
-        except FileNotFoundError as e:
+        if StromdatenOK (fileStrom):
+            Datei = open(fileStrom, "r")
+            Inhalt = Datei.readline()
+            Datei.close()
+        else:
             print  ("Datei 'Stromdaten.heis' fehlt in Ramdisk")
+            return ""
          
         return Inhalt 
 
@@ -659,6 +672,7 @@ def DatenvomESPStrom():
   
     try:
         Inh = StromdateiLesen()
+        if Inh == "": raise ValueError("Stromdatei ist nicht vorhanden")   #Fehler auslösen
         #------------------------------------------------
         #Stromdaten des Hauptstromzaehlers verarbeiten
         Pos = Inh.find("Daten")
@@ -729,7 +743,8 @@ def DatenvomESPStrom():
         print ("Sende Zählerstände zu Heisopo")
         #print ("Zaehlerstaende:\n"+ZST)   
             
-    except:          
+    except ValueError as e:
+                print (e)
                 print("keine oder falsche Daten vom ESP-Strom")
                   
 ################################################################
@@ -808,7 +823,7 @@ def LichtWohnzimmer():
     #print (Byt[271],Byt[272],Byt[273])
     #print (Strom)
    
-    if AktZeit >= EinZeit and AktZeit < MaxAus and Licht < LichtEin and Strom > 90:
+    if (AktZeit >= EinZeit) and (AktZeit < MaxAus) and (Licht < LichtEin) and (Strom > 100) and (Strom < 300):
             StatusLicht=StatuShellyWohnzimmer()
             if StatusLicht == "aus":
                 print ("Licht wird eingeschaltet")
