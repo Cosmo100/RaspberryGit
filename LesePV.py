@@ -7,125 +7,141 @@
 #diese Datei wird von Homerechner.py gelesen
 #und dann an Heisopo übertragen
 
+import subprocess
 import requests
 import datetime
-import json
+#import json
 from requests.auth import HTTPBasicAuth
+#import os
 
-
-url = "http://192.168.178.49"
+urlPV1 = "192.168.178.49"
+urlPV2 = "192.168.178.53"
 url1 = "http://192.168.178.49/status.html"          #Anlage1
 url2 ="http://192.168.178.53:8050/getOutputData"    #Anlage2
 
+Wert=3*[0]
+#++++++++++++++++++++++++++ Unterprogramme +++++++++++++++++++++++++++++ 
 def Login():
-    print("erste Anfrage")
-    r = requests.post(url)
+    r = requests.post(url1)
     
     if r.status_code == 401:    
-        response = requests.get(url, auth=HTTPBasicAuth('admin', 'admin'))
-        print ("Erfolg")
+        response = requests.get(url1, auth=HTTPBasicAuth('admin', 'admin'))
+        
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+def PVServerErreichbar(url):
+	# Ping-Befehl ausführen
+    try:
+        output = subprocess.check_output(["ping", "-c", "1", url], universal_newlines=True)
+        #print("Antwort erhalten von {0}:\n{1}".format(url)
+        print ("Erfolg")
+        return True
+        
+    except subprocess.CalledProcessError:
+        #print("Keine Antwort von {0}".format(url))
+        print ("nicht erfolgreich")
+        return False
 
-Login()
-# senden einer GET-Anfrage an die URL
-response = requests.get(url1)
-Antwcode = response.status_code
-# Überprüfen ob die Anfrage erfolgreich war
-if Antwcode == 200:
-    # Zugreifen auf den HTML-Inhalt der Seite
-    text = str(response.content)
+#+++++++++++++  Programmstart ++++++++++++++++++++++++++++++++++++++   
+date_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+print ("Anfrage an Anlage 1")
 
-    # Ausgabe des HTML-Inhalts
-    #print(text)
- 
-Start = "var webdata_now_p" #Ab diesem Text wird selektiert
-Ende = "var webdata_utime"    #bis zu diesem Text wird selektiert
+if PVServerErreichbar(urlPV1):
+        Login()
+        # senden einer GET-Anfrage an die URL
+        response = requests.get(url1)
+        Antwcode = response.status_code
+        #print ("Antwort ----",Antwcode)
+        # Überprüfen ob die Anfrage erfolgreich war
+        if Antwcode == 200:
+            # Zugreifen auf den HTML-Inhalt der Seite
+            text = str(response.content)
 
-try:
+            # Ausgabe des HTML-Inhalts
+            #print(text)
+         
+        Start = "var webdata_now_p" #Ab diesem Text wird selektiert
+        Ende = "var webdata_utime"    #bis zu diesem Text wird selektiert
 
-    posStart = text.find(Start)
-    posEnde = text.find(Ende)
+        try:
 
-    Auswahl = text[posStart:posEnde]
-    #print (Auswahl)
+            posStart = text.find(Start)
+            posEnde = text.find(Ende)
 
-    I=0
-    Wert=3*[0]
-    while len(Auswahl) > 40:
-         startIndex = Auswahl.find(chr(34))
-         endIndex = Auswahl.find(chr(34), startIndex + 1)
-     
-         Wert[I] = Auswahl[startIndex + 1: endIndex]
-         Auswahl = Auswahl[endIndex+5:]
-         I+=1
-     
-    print (Wert)
-    #print("Aktuelle Leistung:",Wert[0],"Watt")
-    #print("heute produzierte Energie:",float(Wert[1])*1000,"Wh")
-    #print("insgesamt produzierte Leistung:",Wert[2],"kWh")
+            Auswahl = text[posStart:posEnde]
+            #print (Auswahl)
 
-    
-    #Daten in eine Datein schreibe
-    date_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            I=0
+            
+            while len(Auswahl) > 40:
+                 startIndex = Auswahl.find(chr(34))
+                 endIndex = Auswahl.find(chr(34), startIndex + 1)
+             
+                 Wert[I] = Auswahl[startIndex + 1: endIndex]
+                 Auswahl = Auswahl[endIndex+5:]
+                 I+=1
+             
+            print (Wert)
+                        
 
-    # Öffnen der Datei im Schreibmodus und Schreiben der Daten
-    #PV.sol sammelt alle Daten, Aktsol.sol nur die aktuellen Daten
-    
-   
-except:
-    print("Login-in in PV-Server hat nicht funktioniert. Antwortcode: ",Antwcode)
-    Login()
-   
-   
+            # Öffnen der Datei im Schreibmodus und Schreiben der Daten
+            #PV.sol sammelt alle Daten, Aktsol.sol nur die aktuellen Daten
+            
+           
+        except:
+            print("Login-in in PV-Server hat nicht funktioniert. Antwortcode: ",Antwcode)
+            Login()
+           
+           
    
 ####### Anfrage an Anlage 2 ######################### 
+
 print ("Anfrage an Anlage 2")
+if PVServerErreichbar(urlPV2):
+        try:
+            # Senden der GET-Anfrage
+            response = requests.get(url2)
 
-try:
-    # Senden der GET-Anfrage
-    response = requests.get(url2)
+            # Überprüfen, ob die Anfrage erfolgreich war (Statuscode 200)
+            if response.status_code == 200:
+                # Auswerten der Antwort (z. B. JSON-Format)
+                daten = response.json()  # Wenn die Antwort im JSON-Format vorliegt
+                data = daten.get('data')
+                #print("Antwortdaten:", data)
 
-    # Überprüfen, ob die Anfrage erfolgreich war (Statuscode 200)
-    if response.status_code == 200:
-        # Auswerten der Antwort (z. B. JSON-Format)
-        daten = response.json()  # Wenn die Antwort im JSON-Format vorliegt
-        data = daten.get('data')
-        #print("Antwortdaten:", data)
+                Modul1=3*[0]
+                Modul2=3*[0]
+                Summ=3*[0]
+                Modul1[0]=str(data['p1'])
+                Modul2[0]=str(data['p2'])
+                Modul1[1]=str(data['e1'])
+                Modul2[1]=str(data['e2'])
+                Modul1[2]=str(data['te1'])
+                Modul2[2]=str(data['te2'])
+                
+                Summ[0]=str(data['p1']+data['p2'])
+                Summ[1]=str(data['e1']+data['e2'])
+                Summ[2]=str(data['te1']+data['te2'])
+            
+                print (Modul1)
+                print (Modul2)
+                print (Summ)
+           
+            else:
+                print("Fehler: HTTP", response.status_code, "-", response.reason)
+                Datei = open("/mnt/ramdisk/FehlerInLesePV.txt",'a')
+                print(Datei.write("Fehler: HTTP", response.status_code, "-", response.reason+"\n"))
+                Datei.close()
 
-        Modul1=3*[0]
-        Modul2=3*[0]
-        Summ=3*[0]
-        Modul1[0]=str(data['p1'])
-        Modul2[0]=str(data['p2'])
-        Modul1[1]=str(data['e1'])
-        Modul2[1]=str(data['e2'])
-        Modul1[2]=str(data['te1'])
-        Modul2[2]=str(data['te2'])
-        
-        Summ[0]=str(data['p1']+data['p2'])
-        Summ[1]=str(data['e1']+data['e2'])
-        Summ[2]=str(data['te1']+data['te2'])
-    
-        print (Modul1)
-        print (Modul2)
-        print (Summ)
-   
-    else:
-        print("Fehler: HTTP", response.status_code, "-", response.reason)
-        Datei = open("/mnt/ramdisk/FehlerInLesePV.txt",'a')
-        print(Datei.write("Fehler: HTTP", response.status_code, "-", response.reason+"\n"))
-        Datei.close()
+        except requests.exceptions.RequestException as e:
+            print("Ein Fehler ist aufgetreten:", e)
 
-except requests.exceptions.RequestException as e:
-    print("Ein Fehler ist aufgetreten:", e)
+        Len1= len(Modul1[0])+len(Modul1[1])+len(Modul1[2])
+        Len2= len(Modul2[0])+len(Modul2[1])+len(Modul2[2])
 
-Len1= len(Modul1[0])+len(Modul1[1])+len(Modul1[2])
-Len2= len(Modul2[0])+len(Modul2[1])+len(Modul2[2])
-
-#print ("Länge1: " + str(Len1) + " - Länge2: " + str(Len2))
-    
-#Alle Daten in  Datei schreiben    
-if Len1 > 0 and Len2>0:
-        with open("/mnt/ramdisk/Aktsol.sol", "w") as file:
-                file.write(date_string + ": " + str(Wert) + "\n" + str(Summ)+ "\n" + str(Modul1)+ "\n" + str(Modul2))
-        #print ("Datei erstellt")
+        #print ("Länge1: " + str(Len1) + " - Länge2: " + str(Len2))
+            
+        #Alle Daten in  Datei schreiben    
+        if Len1 > 0 and Len2>0:
+                with open("/mnt/ramdisk/Aktsol.sol", "w") as file:
+                        file.write(date_string + ": " + str(Wert) + "\n" + str(Summ)+ "\n" + str(Modul1)+ "\n" + str(Modul2))
+                #print ("Datei erstellt")

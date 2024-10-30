@@ -617,7 +617,7 @@ def ResetESP(Diff):
         if datetime.now() < ResetZeit: return
         #nächstr Reset erst 2 Minuten später
         ResetZeit = datetime.now() + timedelta(minutes=2) # vergangene Zeit seit dem letzten Reset
-        print ("Reset des Strom-ESP32 => Differenz:"+ str(Diff)) 
+        print ("Reset des Strom-ESP32 => Zeitdifferenz:"+ str(Diff)) 
         GPIO.output(ResetPinESP32, GPIO.LOW)
         time.sleep(2)
         GPIO.output(ResetPinESP32, GPIO.HIGH)  # Setze den Pin wieder auf HIGH
@@ -634,7 +634,7 @@ def StromdatenOK(fileStrom):
             file_stats = os.stat(fileStrom)
             Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
             Diff = round(time.time()-Erstellungszeit,2)
-            print ("Differenz:"+str(Diff))
+            print ("Zeitdifferenz:"+str(Diff))
             if Diff > (4*60):  #Älter als 4 Minuten 
                 ResetESP(Diff)  #Wenn Stromdatei älter als 300sec => Reset des ESP32 über GPIO
                 return False
@@ -725,7 +725,14 @@ def DatenvomESPStrom():
             
             Zaehler = str(Nr) +"-" + ZaehlerstandBerechnen (Byts[9:12]) + "\n"
             ZST = ZST + Zaehler
-            #print("Shelly",Nr,Zaehler)
+            
+            #Einspeisung von Garage, PoolB u.PV2 berechnen
+            if Nr == 82 or Nr == 84 or Nr == 86:
+                ZaehlerEinspeisung = str(Nr+100) + "-" + ZaehlerstandBerechnen(Byts[12:15]) + "\n"
+                ZST = ZST + ZaehlerEinspeisung
+                #print("Shelly",Nr,str(ZaehlerEinspeisung))
+           
+                
             Pos=Last
             
         StaendeInTextdatei(ZST)
@@ -737,7 +744,7 @@ def DatenvomESPStrom():
         #print ("GarKell=" + GarKell)
         
          #Zaehlerstände alle 3 Minuten zu Heisopo
-        if (time.time()- StromZeit) < 3*60: return  #Zaehlerstände alle 5 Minunten Speichern
+        if (time.time()- StromZeit) < 3*60: return  #Zaehlerstände alle 3 Minunten speichern
         StromZeit = time.time()
         ZaehlerstaendeZuHeisopo(Datum + "," + ZST)
         print ("Sende Zählerstände zu Heisopo")
@@ -767,7 +774,7 @@ def StaendeInTextdatei(Text):
              Textdatei= open("/mnt/ramdisk/Zaehlerstaende.heis","w")
              Textdatei.write(Text)
              Textdatei.close()
-
+########################################################################
 def DatenInTextdatei(Datenstrom):
             #Daten weredn in Texdatei gespeichert und auf Ramdisk abgelegt
              Textdatei= open("/mnt/ramdisk/Daten.heis","w")
