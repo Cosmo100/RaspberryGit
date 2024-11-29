@@ -1,7 +1,7 @@
 import subprocess
 
 urlPV1 = "192.168.178.49"
-urlPV2 = "192.168.178.53"
+urlPV2 = "192.168.178.37"
 
 def PVServeranpingen(url):
 	# Ping-Befehl ausführen

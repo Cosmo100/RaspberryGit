@@ -615,8 +615,8 @@ def ResetESP(Diff):
         global ResetZeit
         print ("Reset : " + ResetZeit.strftime("%H:%M:%S"))
         if datetime.now() < ResetZeit: return
-        #nächstr Reset erst 2 Minuten später
-        ResetZeit = datetime.now() + timedelta(minutes=2) # vergangene Zeit seit dem letzten Reset
+        #nächstr Reset erst 3 Minuten später
+        ResetZeit = datetime.now() + timedelta(minutes=5) # vergangene Zeit seit dem letzten Reset
         print ("Reset des Strom-ESP32 => Zeitdifferenz:"+ str(Diff)) 
         GPIO.output(ResetPinESP32, GPIO.LOW)
         time.sleep(2)
@@ -635,7 +635,7 @@ def StromdatenOK(fileStrom):
             Erstellungszeit = file_stats.st_ctime # Erstellungszeit abrufen       
             Diff = round(time.time()-Erstellungszeit,2)
             print ("Zeitdifferenz:"+str(Diff))
-            if Diff > (4*60):  #Älter als 4 Minuten 
+            if Diff > (5*60):  #Älter als 5 Minuten 
                 ResetESP(Diff)  #Wenn Stromdatei älter als 300sec => Reset des ESP32 über GPIO
                 return False
             return True    
@@ -669,7 +669,7 @@ def DatenvomESPStrom():
 
     #Diese Daten werden über UDP vom ESPStrom gesendet an Heisopi und als Datei im Ram abgelegt
     Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-  
+    ZST =""
     try:
         Inh = StromdateiLesen()
         if Inh == "": raise ValueError("Stromdatei ist nicht vorhanden")   #Fehler auslösen
@@ -735,7 +735,7 @@ def DatenvomESPStrom():
                 
             Pos=Last
             
-        StaendeInTextdatei(ZST)
+        if len(ZST) > 1: StaendeInTextdatei(ZST)
         #Keller offen und Garage offen rausfiltern
         Pos = Inh.find("GarKell",Pos)
         First = Inh.find("[",Pos)
@@ -1033,15 +1033,14 @@ try:
             RaspZeitHolen()
             LeseDatenVomSolarserver()
             DatenvomESPStrom()
-            LichtWohnzimmer()
-            #print (Byt[130:132],Byt[130]+256*Byt[131])
+            #LichtWohnzimmer()
+            
             DatenzuHeisopo()
             DatenzumPC()
             #DatenzumESP32()
             if SerOK[2]: DatenzumArduino() #nur wenn Verbindung vorhanden ist
-            #print (Byt[130:132])     #Uhrzeit des Raspberr
-       # root.mainloop()    
-            
+            #print (Byt[130:132])     #Uhrzeit des Raspberry
+               
 ##        
 ##        key = inkey()
 ##        if key in ['w','a','s','d']:
