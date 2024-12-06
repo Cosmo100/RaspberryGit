@@ -1,13 +1,14 @@
 
 #Externes Shelly mit API-URL abfragen,
 #Json Paket zerlegen und in Datenbank auf Heisopo-Datenbank speichern
+#script wird jede viertelstande vom Raspberry als cronjob ausgeführt (crontab -e)
 
 import requests
 from requests.auth import HTTPBasicAuth
 import re		#Reguläre Ausdrücke
 from datetime import datetime
 
-APIURL = "https://shelly-86-eu.shelly.cloud/device/status/?Content-Type=application/x-www-form-urlencoded&id=10061cd282f8&auth_key=MWUyNGVidWlk7E63EDECAE18383DBD89F610A3FEC8D80A2176772344C47993DAABAAF5A63751FC465FE14AF5341F"
+APIURL = "https://shelly-146-eu.shelly.cloud/device/status/?Content-Type=application/x-www-form-urlencoded&id=10061cd282f8&auth_key=MWUyNGVidWlk7E63EDECAE18383DBD89F610A3FEC8D80A2176772344C47993DAABAAF5A63751FC465FE14AF5341F"
 HeisopoURL = "http://www.heisopo.de/Raspberry/EingangExtShelly.php"
 Debug = False
 
@@ -17,7 +18,6 @@ def JsonTextZerlegen(Daten):
 	Online = WertSelektieren(Daten, "online", False)
 	if (Debug): print ("Online=" + Online )
 
-	
 	Zustand = WertSelektieren(Daten, "output", False)
 	if (Debug): print ("Zustand=" + Zustand )
 	
@@ -25,21 +25,28 @@ def JsonTextZerlegen(Daten):
 	datum_zeit = datetime.fromtimestamp(Zeit).strftime("%d.%m.%Y %H:%M")
 	if (Debug): print ("Zeit:",datum_zeit)
 	
-	
-	Spannung = "{:.1f} V".format(WertSelektieren(Daten, "voltage"))
+	Spannung = WertSelektieren(Daten, "voltage")
+	SpannungF = "{:.1f} V".format(Spannung)
 	if (Debug): print ("Spannung="+Spannung)
 	
-	Strom = "{:.2f} A".format(WertSelektieren(Daten, "current"))
+	Strom = WertSelektieren(Daten, "current")
+	StromF = "{:.2f} A".format(Strom)
 	if (Debug): print ("Strom="+Strom)
 	
-	Leistung = "{:.2f} W".format(WertSelektieren(Daten, "apower"))
+	Leistung = WertSelektieren(Daten, "apower")
+	LeistungF = "{:.2f} W".format(Leistung)
 	if (Debug): print ("Leistung="+Leistung)
 	
-	Zaehlerstand = "{:.3f} kWh".format(WertSelektieren(Daten, "total")/1000)
+	Zaehlerstand = WertSelektieren(Daten, "total")/1000
+	ZaehlerstandF = "{:.3f} kWh".format(Zaehlerstand)
 	if (Debug): print ("Zaehlerstand=" + Zaehlerstand)
 	 
-	Temperatur = "{:.1f} °C".format(WertSelektieren(Daten, "tC"))
+	Temperatur = WertSelektieren(Daten, "tC")
+	TemperaturF = "{:.1f} °C".format(Temperatur)
 	if (Debug): print ("Temperatur=" + Temperatur)
+	
+	#Zaehlerstand = 13.95		#Dummy Daten
+	#datum_zeit = datetime(2024, 12, 2, 12, 33, 0)		0
 	
 	data = {
     "Online": Online,
@@ -52,7 +59,6 @@ def JsonTextZerlegen(Daten):
     "Temperatur": Temperatur
 	}
 
-	
 	
 	DatenzuHeisopo(data)
 
@@ -68,9 +74,8 @@ def DatenzuHeisopo(Daten):
 	try:   
 		#if (time.time()- AktZeit) < Theisopo: return
 		#AktZeit = time.time()
-
+		
 		r = requests.post(HeisopoURL, data=Daten)
-    
 		print (r.status_code)
 		Serverantwort="Antwort von Heisopo: \n"+ r.text
 		print (Serverantwort)
@@ -105,4 +110,4 @@ if (response.status_code == 200):
 	JsonTextZerlegen(response.text)
 	
 else:
-	print ("Fehlermeldung von Shelly-Cloud "+response.status_code)
+	print ("Fehlermeldung von Shelly-Cloud "+ response.status_code)

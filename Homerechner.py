@@ -3,6 +3,17 @@
 #https://forum-raspberrypi.de/forum/thread/35528-daten-an-webserver-uebertragen/#
 #Schnittstellen des Raspberry: dmesg | grep  tty
 
+#Achtung Cron-Jobs
+#Folgende Python-Scipts werden per Cron-Job des Raspberry ausgeführt:
+
+#LesePV.py liest die Router der PV-Anlagen aus und speichert diese
+#in Ramdisk in Datei 'PV.sol' 
+#der Job wird jede Minute durchgeführt
+
+#ExternesShelly.py liest die Daten des externen Shellys täglich um 8.05 und um 21.05 Uhr 
+#und speichert die Daten auf Heisopo in der Datenbank, Tabelle 'ShellyExtern'
+#mit heisopo/Raspberry/EingangExtShelly.php
+#
 
 
 import sys
