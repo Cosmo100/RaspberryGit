@@ -62,13 +62,9 @@ from pathlib import Path
 #button = tk.Button(root, text='Ende', width=25, command=root.destroy)
 #button.pack()
 
-#Zum Gas auslesen 
-fileGas ="/mnt/ramdisk/Gasdaten.heis"
-ErsteGasmessung = True
-
 
 ip   = "192.168.178.34"  #Hauprechner zur UDP
-ip1   = "192.168.178.40"  #zum ESP32 Gas
+
 ESPStrom_IP = "192.168.178.60"
 IPWohnzimmer ="192.168.178.52"
     
@@ -192,53 +188,59 @@ def FlieskommaInInt(BytNr):
 
   
 ##############################################################################    
-def LeseWertAusZeile(Datei):
-    Zeile = Datei.readline()
-    Pos = Zeile.find(" = ") + 3
-    Wert = Zeile[Pos:-1]
-    return Wert
 
+def Wasserdaten():
+    global Byt
+   
+    try:
+            Datei= open("/mnt/ramdisk/AI_onTheEdge_Wasser.heis","r")
+            for line in Datei: 
+                Stand=line.rstrip()
+            Datei.close()
+
+            #print("Inhalt WasserDatei :" +Stand)
+                 
+            Wert =float(Stand.split(" ")[0])
+            WertInt = int(Wert*1000)
+            #print("Stand:" + str(Wert))
+            Byt[301] = (WertInt) & 0xff
+            Byt[302] = (WertInt>>8) & 0xff
+            Byt[303] = (WertInt>>16) & 0xff
+            return Wert  
+           
+            
+    except FileNotFoundError as e:
+           print  ("Datei 'AI_onTheEdge_Wasser.heis' fehlt in Ramdisk")
+           return 100
+
+    return Wert  
 ##############################################################################
 
 def Gasdaten():
     global Byt
-    global LetzteDateiGasAenderung, fileGas
-    global ErsteGasmessung
-
+   
     try:
-        if (LetzteDateiGasAenderung != os.path.getmtime(fileGas) or ErsteGasmessung == True):
-            #print (os.path.getmtime(fileGas))   
-            Zeitstempel = time.strftime("%d.%m.%Y %H:%M:%S")
-            print ("Gasmessung vom "+Zeitstempel)
-            Datei = (fileGas, "r")
-
-            Zeitpunkt = LeseWertAusZeile(Datei)
-            Zeitdifferenz = LeseWertAusZeile(Datei)
-            NeuerZaehlerstand = LeseWertAusZeile(Datei)
-            VolStrom = LeseWertAusZeile(Datei)
+            Datei= open("/mnt/ramdisk/AI_onTheEdge.heis","r")
+            for line in Datei: 
+                Stand=line.rstrip()
             Datei.close()
-            
-            LetzteDateiGasAenderung = os.path.getmtime(fileGas)
-            ErsteGasmessung = False
-  
-            print(Zeitpunkt)
-            print(Zeitdifferenz)
-            print(NeuerZaehlerstand)
-            print(VolStrom)  
-          
-            Wert = int(float(NeuerZaehlerstand)*100)
-            Byt[322] = (Wert) & 0xff
-            Byt[323] = (Wert>>8) & 0xff
-            Byt[324] = (Wert>>16) & 0xff
-                            
-            Wert = int(float(VolStrom) *100)
-            Byt[325] = (Wert) & 0xff
-            Byt[326] = (Wert>>8) & 0xff
+
+            #print("Inhalt GasDatei :" +Stand)
+                 
+            Wert =float(Stand.split(" ")[0])
+            WertInt = int(Wert*1000)
+            #print("Stand:" + str(Wert))
+            Byt[298] = (WertInt) & 0xff
+            Byt[299] = (WertInt>>8) & 0xff
+            Byt[300] = (WertInt>>16) & 0xff
+            return Wert  
+           
             
     except FileNotFoundError as e:
-           print  ("Datei 'Gasdaten.heis' fehlt in Ramdisk")
+           print  ("Datei 'AI_onTheEdge.heis' fehlt in Ramdisk")
+           return 1000
 
-                                   
+    return Wert                               
 ###################################################################
 
 async def LeseAdresse():
@@ -304,7 +306,7 @@ def DatenzumPC():  #über UDP
     global Serveranfrage
     
     outstr=', '.join(str(x) for x in Byt)
-    #print ("Zum PC",outstr)
+    #print ("Zum PC"+str(Byt[298:301]))
     PCDaten = str(outstr)
    
     if Serveranfrage:   #Wenn Antwort von Heisopo da-> anhängen an PC Daten
@@ -321,8 +323,8 @@ def DatenzuHeisopo():
     global AktZeit
     global Serverantwort
     global Serveranfrage
-    
-    Theisopo=30   #Sendepause, nur alle 20 sec zum Server senden
+
+    Theisopo=30  #Sendepause, nur alle 20 sec zum Server senden
     try:   
         if (time.time()- AktZeit) < Theisopo: return
         AktZeit = time.time()
@@ -342,17 +344,6 @@ def DatenzuHeisopo():
         Serverantwort="Inet\n Keine Internetverbindung !"
         print ("Fehler: keine Internetverbindung")
 
-################# Unterprogramme ################################          
-def PVDatenZuHeisopo(PVMax):
-    #zum Server schicken
-             try:   
-                url = "http://www.heisopo.de/Raspberry/EingangPVDaten.php"
-                payload ={'PVDaten': PVMax}
-                r = requests.post(url, data=payload)
-                #print (r.status_code)
-                print (r.text)
-             except:
-                print ("Fehler: keine Internetverbindung")
 
 ################################################################################          
 def StromDatenZuHeisopo(Strom):
@@ -407,7 +398,6 @@ def PVWerteSelektieren(I,PVZeile,BS):
                  PVText = PVText.replace("'","")
                  PVText = PVText.split(", ")
                  #print ("PVText = " + str(PVText))
-        
                  
                  #Aktuell erzeugte Leistung    
                  AktEnergie[I] = int(PVText[0])
@@ -424,7 +414,7 @@ def PVWerteSelektieren(I,PVZeile,BS):
                  Byt[BS+4] = (GesEnergie[I]) & 0xff
                  Byt[BS+5] = (GesEnergie[I]>>8) & 0xff
              else:
-                print("Fehler beim Lesen der Zäehlerstände")
+                print("Fehler beim Lesen der Zählerstände")
                 #Datname = open("/mnt/ramdisk/Fehler.txt",'a')
                 #print(Datname.write(PVZeile+"\n"))
                 #Datname.close()
@@ -532,7 +522,7 @@ def DatenzumArduino():
         ToArd[Anz]= LowByte
         Arduino.write(ToArd[:Anz+1])
         #print ("Sende : "+ str(ToArd[162:166]))
-        
+        #print ("Zum PC"+str(Byt[298:301]))
         #ToArd[159]= 0; #WLanbyt zurücksetzen
         #except:
         #print (Pruef,"-", LowByte)
@@ -588,7 +578,6 @@ def ArduinoBytsAuswerten(i,Ard):
         del data1[len(data1)-1]  #letztes Element entfernen
         for n in range(0,len(data1)):
             FromArd[n]=int(data1[n])
-        
         for j in range(0,170):
              Byt[j+160] = FromArd[j]
 #             if (j> 85):
@@ -677,10 +666,11 @@ def DatenvomESPStrom():
     global GesEnergiePV1
     global StromZeit
     global GarKell
-
+  
     #Diese Daten werden über UDP vom ESPStrom gesendet an Heisopi und als Datei im Ram abgelegt
     Datum = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ZST =""
+   
     try:
         Inh = StromdateiLesen()
         if Inh == "": raise ValueError("Stromdatei ist nicht vorhanden")   #Fehler auslösen
@@ -703,7 +693,9 @@ def DatenvomESPStrom():
             ZST= ZST + "02" + "-" + str(GesEnergie[0]/10) +"\n"                 #Gesamt PV1
             ZST= ZST + "03" + "-" + str(GesEnergie[1]/10)+ "\n"                 #Gesamt PV2
             ZST= ZST + "04" + "-" + str(GesEnergie[2]/10)+ "\n"                 #Gesamt PV2, Modul1
-            ZST= ZST + "05" + "-" + str(GesEnergie[3]/10) + "\n"                #Gesamt PV2, Modul2    
+            ZST= ZST + "05" + "-" + str(GesEnergie[3]/10) + "\n"                #Gesamt PV2, Modul2 
+            ZST= ZST + "06" + "-" + str(Gasdaten()) + "\n"                      #Gaszähler 
+            ZST= ZST + "07" + "-" + str(Wasserdaten()) + "\n"                     #Wasserzähler
             
             Byt[128]= int(Byts[11]) #beide niederwertige Byts zum Senden an Dachrechner
             Byt[129]= int(Byts[10]) #das ist die aktuelle Leistung des Hauptstromzählers
@@ -711,7 +703,7 @@ def DatenvomESPStrom():
             #Minute = datetime.now().minute
             #print ("Stunde=",Stunde,":",Minute)
             #if (Minute == 59):   #Stromdaten jede Stunde zu Heisopo, gilt nur für Datentabelle 'Stromdaten'
-            StromDatenZuHeisopo(Datum + "," + ZS)
+            #StromDatenZuHeisopo(Datum + "," + ZS)
                         #print ("Datenzu Heisopo =:",Minute)
          #------------------------------------------------
                    
@@ -940,9 +932,6 @@ KNXZeit = time.time() - Tknx
 
 NeustartzuHeisopo(1)  #Parameter 1 = Raspberry Pi
 
-if Path(fileGas).exists():#Existiert Datei "Gasdaten
-    LetzteDateiGasAenderung = os.path.getmtime(fileGas)
-
 
 try:  
     while True:
@@ -950,7 +939,7 @@ try:
             #Handy_im_WLan("192.168.178.23")  #Ist Handy im WLan?
       
         ###########-Lese KNX-Gruppenadresse ###########
-        LED_schalten()
+        #LED_schalten()
       
         try:
             if (time.time()- KNXZeit) > Tknx:
@@ -1038,20 +1027,17 @@ try:
 
             print(time.strftime("%d.%m.%Y %H:%M:%S"),"DeltaSol:", AnzDelta,"SunGo:",AnzSunGo,"Arduino:",AnzArduino, "KNX:",KNXZa,"Vom Arduino:",len(Ard))
             #Zeitlabel.config(text=time.strftime("%d.%m.%Y %H:%M:%S"))
-            #if Path(fileGas).exists():
-            #Gasdaten()
-               
             RaspZeitHolen()
             LeseDatenVomSolarserver()
             DatenvomESPStrom()
             #LichtWohnzimmer()
-            
             DatenzuHeisopo()
             DatenzumPC()
             #DatenzumESP32()
+            
             if SerOK[2]: DatenzumArduino() #nur wenn Verbindung vorhanden ist
             #print (Byt[130:132])     #Uhrzeit des Raspberry
-               
+            #print ("Zum PC"+str(Byt[298:301]))   
 ##        
 ##        key = inkey()
 ##        if key in ['w','a','s','d']:
